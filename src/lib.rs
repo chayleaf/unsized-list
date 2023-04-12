@@ -5,13 +5,16 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use core::{marker::PhantomData, mem::{self, MaybeUninit}, ops::{Deref, DerefMut}, ptr, slice};
 use core::ffi::CStr;
+use core::{
+    marker::PhantomData,
+    mem::{self, MaybeUninit},
+    ops::{Deref, DerefMut},
+    ptr, slice,
+};
 
-#[cfg(feature = "std")]
-use std::{path::Path, ffi::OsStr};
 #[cfg(all(feature = "std", unix))]
-use std::os::unix::prelude::OsStrExt;
+use std::{ffi::OsStr, os::unix::prelude::OsStrExt, path::Path};
 
 #[cfg(not(feature = "std"))]
 use alloc::alloc as alloc2;
@@ -43,18 +46,19 @@ impl<T: ?Sized + CopyableUnsized> ListSlice<T> {
                 .and_then(|x| TryFrom::try_from(x).ok())?,
         );
         data.get(mem::size_of::<usize>()..mem::size_of::<usize>() + len)
-            .map(|x| unsafe {
-                T::construct_ptr(x.as_ptr(), len)
-            })
+            .map(|x| unsafe { T::construct_ptr(x.as_ptr(), len) })
     }
     pub fn head_tail_mut(&mut self) -> Option<(&mut T, Option<ListSliceTailMut<T>>)> {
         #[allow(clippy::cast_ref_to_mut)]
-        let head = self.head().map(|x| unsafe { &mut *(x as *const T as *mut T) })?;
+        let head = self
+            .head()
+            .map(|x| unsafe { &mut *(x as *const T as *mut T) })?;
         Some((head, self.tail_mut()))
     }
     pub fn head_mut(&mut self) -> Option<&mut T> {
         #[allow(clippy::cast_ref_to_mut)]
-        self.head().map(|x| unsafe { &mut *(x as *const T as *mut T) })
+        self.head()
+            .map(|x| unsafe { &mut *(x as *const T as *mut T) })
     }
 }
 
@@ -71,15 +75,14 @@ impl<T: ?Sized> ListSlice<T> {
                 .and_then(|x| TryFrom::try_from(x).ok())?,
         );
         data.get(mem::size_of::<usize>()..mem::size_of::<usize>() + len)
-            .map(|x| unsafe {
-                *mem::transmute::<&(*const u8, usize), &&T>(&(x.as_ptr(), len / n))
-            })
+            .map(|x| unsafe { *mem::transmute::<&(*const u8, usize), &&T>(&(x.as_ptr(), len / n)) })
     }
     /// # Safety
     /// see head_unsafe
     pub unsafe fn head_mut_unsafe(&mut self, n: usize) -> Option<&mut T> {
         #[allow(clippy::cast_ref_to_mut)]
-        self.head_unsafe(n).map(|x| unsafe { &mut *(x as *const T as *mut T) })
+        self.head_unsafe(n)
+            .map(|x| unsafe { &mut *(x as *const T as *mut T) })
     }
     pub fn tail(&self) -> Option<ListSliceTail<T>> {
         let data = unsafe { slice::from_raw_parts(self.chunks, self.chunks_len) };
@@ -104,13 +107,21 @@ impl<T: ?Sized> ListSlice<T> {
         })
     }
     pub fn tail_mut(&mut self) -> Option<ListSliceTailMut<T>> {
-        self.tail().map(|x| ListSliceTailMut { inner: x.inner, _ph: x._ph })
+        self.tail().map(|x| ListSliceTailMut {
+            inner: x.inner,
+            _ph: x._ph,
+        })
     }
     /// # Safety
     /// see head_unsafe
-    pub unsafe fn head_tail_mut_unsafe(&mut self, n: usize) -> Option<(&mut T, Option<ListSliceTailMut<T>>)> {
+    pub unsafe fn head_tail_mut_unsafe(
+        &mut self,
+        n: usize,
+    ) -> Option<(&mut T, Option<ListSliceTailMut<T>>)> {
         #[allow(clippy::cast_ref_to_mut)]
-        let head = self.head_unsafe(n).map(|x| unsafe { &mut *(x as *const T as *mut T) })?;
+        let head = self
+            .head_unsafe(n)
+            .map(|x| unsafe { &mut *(x as *const T as *mut T) })?;
         Some((head, self.tail_mut()))
     }
 }
@@ -315,7 +326,12 @@ impl<T: ?Sized> Deref for List<T> {
 impl<T: ?Sized> Drop for List<T> {
     fn drop(&mut self) {
         if !self.inner.chunks.is_null() {
-            unsafe { alloc2::dealloc(self.inner.chunks, alloc2::Layout::from_size_align(self.chunks_cap, self.inner.align).unwrap()) };
+            unsafe {
+                alloc2::dealloc(
+                    self.inner.chunks,
+                    alloc2::Layout::from_size_align(self.chunks_cap, self.inner.align).unwrap(),
+                )
+            };
         }
     }
 }
